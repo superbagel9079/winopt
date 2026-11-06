@@ -1,0 +1,150 @@
+/* winopt's look, Pier's: black and white, square, the panels set apart by a step of tone,
+   a line under each section and between rows. A console font throughout.
+
+   Contents: tokens · base · controls · top bar · machine · cards · findings · scrollbars. */
+
+/* ---------------------------------------------------------------- tokens */
+
+:root {
+  --bg: #0c0c0c;
+  --fg: #f2f2f2;
+  --dim: #8a8a8a;
+  --line: #2c2c2c;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #fafafa; --fg: #111; --dim: #6a6a6a; --line: #d4d4d4;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #fafafa; --fg: #111; --dim: #6a6a6a; --line: #d4d4d4;
+  color-scheme: light;
+}
+:root {
+  /* Surfaces: the panels (a step above the background), what sits on them, what is
+     under the pointer. */
+  --surface: color-mix(in srgb, var(--fg) 5%, var(--bg));
+  --chip: var(--bg);
+  --raise: color-mix(in srgb, var(--fg) 10%, var(--bg));
+  --strong: color-mix(in srgb, var(--fg) 16%, var(--bg));
+  --ui: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --t-label: 11px;
+  --t-small: 12px;
+  --t-text: 13px;
+  --t-title: 15px;
+  /* Spacing: 4, 8, 12, 16, 24 and nothing else. */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+}
+
+/* ---------------------------------------------------------------- base */
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--t-text)/1.5 var(--ui);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+h1 { font-size: var(--t-title); font-weight: 600; margin: 0; }
+h2 {
+  font-size: var(--t-small); font-weight: 600; margin: 0 0 var(--s1);
+  padding: 0 0 6px; border-bottom: 1px solid var(--line);
+}
+p { margin: var(--s2) 0; }
+.dim { color: var(--dim); }
+.small { font-size: var(--t-small); }
+.live-dot { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+/* ---------------------------------------------------------------- controls */
+
+button {
+  font: inherit;
+  background: var(--fg);
+  color: var(--bg);
+  border: 1px solid transparent;
+  border-radius: 0;
+  padding: 5px var(--s3);
+  cursor: pointer;
+}
+button:hover { background: color-mix(in srgb, var(--fg) 85%, var(--bg)); }
+button.link { background: none; border: none; color: var(--dim); padding: 0; }
+button.link:hover, button.link:focus-visible { color: var(--fg); }
+button:disabled { opacity: .5; cursor: default; }
+:focus-visible { outline: 1px solid var(--fg); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- top bar */
+
+#topbar { display: flex; align-items: center; gap: var(--s4); padding: 6px 14px; min-height: 36px; background: var(--bg); }
+.logo { font-weight: 700; }
+#status { min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+nav { margin-left: auto; display: flex; gap: var(--s4); flex-shrink: 0; }
+
+/* ---------------------------------------------------------------- page */
+
+#page { flex: 1; overflow: auto; background: var(--surface); }
+#content { max-width: 1040px; margin: 0 auto; padding: var(--s5) 20px 32px; }
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 10px; color: var(--dim); }
+.error { color: var(--fg); font-weight: 600; border-left: 3px solid var(--fg); padding-left: var(--s2); }
+
+/* The machine: who made it, its name, what kind it is, then Windows and its firmware. */
+.machine { margin-bottom: var(--s5); }
+.machine .maker { color: var(--dim); font-size: var(--t-small); }
+.machine h1 { font-size: 20px; margin: 2px 0 var(--s2); overflow-wrap: anywhere; }
+.tags { display: flex; gap: 2px; flex-wrap: wrap; margin-bottom: var(--s2); }
+.tag { background: var(--chip); color: var(--dim); padding: 2px 10px; font-size: var(--t-small); }
+.tag.strong { background: var(--fg); color: var(--bg); }
+.machine .os { color: var(--dim); font-size: var(--t-small); }
+
+/* ---------------------------------------------------------------- cards */
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: var(--s4); }
+.card { background: var(--chip); padding: 14px var(--s4) var(--s3); min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+/* One fact per row: what it is on the left, its value on the right, a line between. */
+.facts { list-style: none; margin: 0; padding: 0; }
+.facts li { display: flex; gap: var(--s3); padding: 5px var(--s2); margin: 0 calc(-1 * var(--s2)); border-top: 1px solid var(--line); min-width: 0; }
+.facts li:first-child { border-top: none; }
+.facts li:hover { background: var(--raise); }
+.facts .k { flex: 0 0 9.5em; color: var(--dim); }
+.facts .v { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.facts li.head { padding-top: var(--s3); }
+.facts li.head .v { font-weight: 600; }
+.facts li.head:hover { background: none; }
+
+/* ---------------------------------------------------------------- findings */
+
+.findings { list-style: none; margin: 0; padding: 0; }
+.findings li { display: flex; gap: var(--s3); padding: var(--s2); margin: 0 calc(-1 * var(--s2)); border-top: 1px solid var(--line); }
+.findings li:first-child { border-top: none; }
+.findings li:hover { background: var(--raise); }
+.findings .mark { flex: 0 0 1.2em; text-align: center; color: var(--dim); }
+.findings li.warning .mark, .findings li.advice .mark { color: var(--fg); font-weight: 700; }
+.findings li.warning { box-shadow: inset 2px 0 0 var(--fg); }
+.findings .area { flex: 0 0 7.5em; text-align: center; align-self: flex-start; color: var(--dim); font-size: var(--t-label); background: var(--surface); padding: 0 6px; margin-top: 1px; }
+.findings .body { flex: 1 1 auto; min-width: 0; }
+.findings .title { font-weight: 600; overflow-wrap: anywhere; }
+.findings .detail { color: var(--dim); font-size: var(--t-small); margin-top: 2px; }
+.legend { color: var(--dim); font-size: var(--t-small); margin: var(--s2) 0 0; }
+.warnings { margin-top: var(--s4); }
+.warnings li { color: var(--dim); font-size: var(--t-small); }
+
+@media (max-width: 520px) {
+  .facts li { flex-direction: column; gap: 0; }
+  .facts .k { flex-basis: auto; }
+}
+
+/* ---------------------------------------------------------------- scrollbars */
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg) 14%, transparent); border: 2px solid transparent; background-clip: padding-box; border-radius: 0; min-height: 24px; }
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--fg) 28%, transparent); }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }

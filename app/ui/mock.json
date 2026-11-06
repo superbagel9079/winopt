@@ -1,0 +1,209 @@
+{
+  "inventory": {
+    "machine": {
+      "manufacturer": "ASUSTeK COMPUTER INC.",
+      "model": "ROG Zephyrus G16 GU605MI",
+      "family": "ROG Zephyrus G16",
+      "form": "laptop",
+      "board": "GU605MI",
+      "biosVersion": "GU605MI.329",
+      "biosDate": "2025-06-06"
+    },
+    "os": {
+      "caption": "Microsoft Windows 11 IoT Enterprise LTSC",
+      "version": "10.0.26100",
+      "build": "26100"
+    },
+    "cpu": {
+      "name": "Intel(R) Core(TM) Ultra 9 185H",
+      "manufacturer": "GenuineIntel",
+      "cores": 16,
+      "threads": 22,
+      "baseMhz": 2500
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4070 Laptop GPU",
+        "vendor": "nvidia",
+        "discrete": true,
+        "driver": "32.0.16.2114",
+        "vramBytes": 8585740288,
+        "width": 1920,
+        "height": 1080,
+        "refreshHz": 165
+      },
+      {
+        "name": "Intel(R) Arc(TM) Graphics",
+        "vendor": "intel",
+        "discrete": false,
+        "driver": "32.0.101.6314",
+        "vramBytes": null,
+        "width": 2560,
+        "height": 1600,
+        "refreshHz": 240
+      }
+    ],
+    "memory": {
+      "totalBytes": 33730473984,
+      "modules": [
+        {
+          "capacityBytes": 4294967296,
+          "kind": "LPDDR5",
+          "soldered": true,
+          "ratedMhz": 7467,
+          "configuredMhz": 7467,
+          "manufacturer": "Samsung",
+          "part": "K3KL9L90CM-MGCT",
+          "slot": "Controller0-ChannelA"
+        },
+        {
+          "capacityBytes": 4294967296,
+          "kind": "LPDDR5",
+          "soldered": true,
+          "ratedMhz": 7467,
+          "configuredMhz": 7467,
+          "manufacturer": "Samsung",
+          "part": "K3KL9L90CM-MGCT",
+          "slot": "Controller0-ChannelB"
+        },
+        {
+          "capacityBytes": 4294967296,
+          "kind": "LPDDR5",
+          "soldered": true,
+          "ratedMhz": 7467,
+          "configuredMhz": 7467,
+          "manufacturer": "Samsung",
+          "part": "K3KL9L90CM-MGCT",
+          "slot": "Controller0-ChannelC"
+        },
+        {
+          "capacityBytes": 4294967296,
+          "kind": "LPDDR5",
+          "soldered": true,
+          "ratedMhz": 7467,
+          "configuredMhz": 7467,
+          "manufacturer": "Samsung",
+          "part": "K3KL9L90CM-MGCT",
+          "slot": "Controller0-ChannelD"
+        },
+        {
+          "capacityBytes": 4294967296,
+          "kind": "LPDDR5",
+          "soldered": true,
+          "ratedMhz": 7467,
+          "configuredMhz": 7467,
+          "manufacturer": "Samsung",
+          "part": "K3KL9L90CM-MGCT",
+          "slot": "Controller1-ChannelA"
+        },
+        {
+          "capacityBytes": 4294967296,
+          "kind": "LPDDR5",
+          "soldered": true,
+          "ratedMhz": 7467,
+          "configuredMhz": 7467,
+          "manufacturer": "Samsung",
+          "part": "K3KL9L90CM-MGCT",
+          "slot": "Controller1-ChannelB"
+        },
+        {
+          "capacityBytes": 4294967296,
+          "kind": "LPDDR5",
+          "soldered": true,
+          "ratedMhz": 7467,
+          "configuredMhz": 7467,
+          "manufacturer": "Samsung",
+          "part": "K3KL9L90CM-MGCT",
+          "slot": "Controller1-ChannelC"
+        },
+        {
+          "capacityBytes": 4294967296,
+          "kind": "LPDDR5",
+          "soldered": true,
+          "ratedMhz": 7467,
+          "configuredMhz": 7467,
+          "manufacturer": "Samsung",
+          "part": "K3KL9L90CM-MGCT",
+          "slot": "Controller1-ChannelD"
+        }
+      ]
+    },
+    "disks": [
+      {
+        "name": "SHPP41-2000GM",
+        "media": "SSD",
+        "bus": "NVMe",
+        "sizeBytes": 2000398934016,
+        "system": true
+      },
+      {
+        "name": "SHPP41-2000GM",
+        "media": "SSD",
+        "bus": "NVMe",
+        "sizeBytes": 2000398934016,
+        "system": false
+      }
+    ],
+    "power": {
+      "planGuid": "381b4222-f694-41f0-9685-ff5bb260df2e",
+      "planName": "Balanced",
+      "battery": {
+        "chargePercent": 83,
+        "onAc": true
+      }
+    },
+    "tools": {
+      "chocolatey": true,
+      "asusServices": [
+        [
+          "AsusAppService",
+          "Disabled"
+        ],
+        [
+          "ASUSOptimization",
+          "Disabled"
+        ],
+        [
+          "ASUSSystemAnalysis",
+          "Disabled"
+        ],
+        [
+          "ASUSSystemDiagnosis",
+          "Disabled"
+        ]
+      ],
+      "ghelperRunning": true
+    },
+    "warnings": []
+  },
+  "findings": [
+    {
+      "id": "laptop-power",
+      "area": "Power",
+      "level": "note",
+      "title": "Laptop: power stays per source",
+      "detail": "Plugged in, performance can be raised; on battery, the plan and the processor's limits are left to save it. No Ultimate Performance plan forced on a laptop."
+    },
+    {
+      "id": "ghelper",
+      "area": "ASUS",
+      "level": "note",
+      "title": "G-Helper is running",
+      "detail": "It sets the performance mode, the GPU mode and the charge limit: winopt leaves those to it and does not change the power plan behind its back."
+    },
+    {
+      "id": "nvidia",
+      "area": "Graphics",
+      "level": "note",
+      "title": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "detail": "A driver profile can be applied with NVIDIA Profile Inspector (shader cache, low latency, power management), chosen for this card."
+    },
+    {
+      "id": "hybrid-gpu",
+      "area": "Graphics",
+      "level": "note",
+      "title": "Two graphics chips (hybrid)",
+      "detail": "The integrated chip runs the desktop and the card takes over in games. Per-application GPU choice and the MUX switch (if the laptop has one) matter more than global settings."
+    }
+  ]
+}
