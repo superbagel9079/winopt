@@ -205,5 +205,15 @@
       "title": "Two graphics chips (hybrid)",
       "detail": "The integrated chip drives the desktop and the dedicated card takes over for games. Choosing the GPU per application, and the MUX switch if the laptop has one, matter more here than global settings."
     }
-  ]
+  ],
+  "power": {
+    "title": "G-Helper manages power",
+    "reason": "G-Helper sets the performance mode and the power limits of this laptop. If winopt changed the Windows power plan as well, the two would undo each other, so winopt leaves it alone.",
+    "actionable": false,
+    "planNow": "Balanced",
+    "planAfter": null,
+    "changes": [],
+    "appliedAt": null,
+    "error": null
+  }
 }

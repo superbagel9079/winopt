@@ -216,12 +216,64 @@ function logo(className) {
     el("span", { class: "prompt" }, "C:\\>"), " winopt", el("span", { class: "block-cursor", "aria-hidden": "true" }));
 }
 
+// --- tuning: power plan ------------------------------------------------------------------
+
+const inApp = Boolean(window.__TAURI__);
+
+/** When the changes were applied, as a short date and time. */
+function appliedWhen(seconds) {
+  return new Date(seconds * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function powerTuning({ power: p }) {
+  const out = [el("p", {}, p.reason)];
+  if (p.error) out.push(el("p", { class: "error" }, p.error));
+  out.push(heading("Plan"), fact("In use", p.planNow), p.planAfter && fact("After Apply", p.planAfter));
+  if (p.changes.length) {
+    out.push(heading("What Apply changes"),
+      ...p.changes.map((c) => fact(`${c.setting} (${c.when})`, `${c.before} → ${c.after}`)));
+  } else if (p.actionable && !p.planAfter) {
+    out.push(el("p", { class: "dim" }, "Everything is already set the way winopt would set it."));
+  }
+  if (p.appliedAt) {
+    out.push(el("p", { class: "dim" }, `winopt applied its changes on ${appliedWhen(p.appliedAt)}. Undo puts back the values it found.`));
+  }
+  if (p.actionable || p.appliedAt) {
+    const canApply = inApp && (p.changes.length > 0 || Boolean(p.planAfter)) && !state.busy;
+    const canUndo = inApp && Boolean(p.appliedAt) && !state.busy;
+    out.push(el("div", { class: "actions" },
+      el("button", { type: "button", class: "btn", "data-power": "apply", disabled: !canApply || null }, "Apply"),
+      el("button", { type: "button", class: "btn", "data-power": "undo", disabled: !canUndo || null }, "Undo"),
+      !inApp && el("span", { class: "dim" }, "Apply and Undo work in the app only.")));
+  }
+  if (state.powerError) out.push(el("p", { class: "error" }, state.powerError));
+  return out;
+}
+
+/** Runs Apply or Undo, then reads the machine again so every section shows the result. */
+async function runPower(action) {
+  if (state.busy || !inApp) return;
+  state.busy = true;
+  state.powerError = null;
+  renderContent();
+  $("status-right").textContent = action === "apply" ? "applying…" : "undoing…";
+  try {
+    state.report.power = await window.__TAURI__.core.invoke(action === "apply" ? "power_apply" : "power_undo");
+  } catch (e) {
+    state.powerError = `${action === "apply" ? "Apply" : "Undo"} failed: ${e?.message || e}`;
+  } finally {
+    state.busy = false;
+  }
+  await refresh();
+  renderContent();
+}
+
 function about() {
   return [
     el("div", { class: "about" }, logo("logo-big")),
     el("p", { class: "dim" }, "Version 0.1.0"),
     el("p", {}, "winopt reads what this PC is, then suggests the settings that suit it."),
-    el("p", { class: "dim" }, "This version only reads. It does not change anything on the machine."),
+    el("p", { class: "dim" }, "It changes nothing until you click Apply, and Undo puts back what it found."),
   ];
 }
 
@@ -240,6 +292,8 @@ const SECTIONS = [
     subtitle: (r) => r.inventory.disks.map((d) => diskSize(d.sizeBytes)).join(" + "), count: (r) => r.inventory.disks.length },
   { id: "power", group: "System", label: "Power", file: "POWER", render: power, subtitle: (r) => r.inventory.power.planName },
   { id: "tools", group: "System", label: "Tools", file: "TOOLS", render: tools, subtitle: () => "Installed and running" },
+  { id: "tune-power", group: "Tuning", label: "Power plan", file: "POWERPLN", render: powerTuning,
+    subtitle: (r) => r.power.title, count: (r) => r.power.changes.length || null },
   { id: "about", group: "", label: "About", file: "ABOUT", render: about, subtitle: () => "Version 0.1.0" },
 ];
 
@@ -259,7 +313,7 @@ const THEMES = [
 /** The menu bar's pull-downs: what each offers, and the body attribute it sets. */
 const MENUS = { theme: THEMES };
 
-const state = { report: null, selected: 0, booting: false, refreshing: false };
+const state = { report: null, selected: 0, booting: false, refreshing: false, busy: false, powerError: null };
 
 /** How often the machine is read again while the window is shown: the source of power,
  *  the plan, the tools running can change; one reading costs WMI about a second. */
@@ -325,12 +379,14 @@ function renderSidebar() {
   const rows = [];
   SECTIONS.forEach((s, i) => {
     if (s.group && s.group !== SECTIONS[i - 1]?.group) rows.push(el("div", { class: "group" }, s.group.toUpperCase()));
+    // A count of null (nothing to show, as with no power change pending) leaves the row bare.
+    const count = s.count?.(state.report);
     rows.push(el("button", {
       type: "button",
       class: `item${i === state.selected ? " selected" : ""}${s.id === "about" ? " last" : ""}`,
       "data-index": String(i),
       "aria-current": i === state.selected ? "page" : null,
-    }, el("span", {}, s.label), s.count && el("span", { class: "count" }, String(s.count(state.report)))));
+    }, el("span", {}, s.label), count != null && el("span", { class: "count" }, String(count))));
   });
   $("sidebar").replaceChildren(...rows);
 }
@@ -368,7 +424,7 @@ function showMachine() {
 
 function scan() {
   if (window.__TAURI__) return window.__TAURI__.core.invoke("scan");
-  return fetch("mock.json").then((r) => {
+  return fetch("mock.json", { cache: "no-store" }).then((r) => {
     if (!r.ok) throw new Error(`mock.json: HTTP ${r.status}`);
     return r.json();
   });
@@ -472,6 +528,11 @@ document.addEventListener("pointerdown", (e) => {
 document.querySelector(".titlebar").addEventListener("click", (e) => {
   const action = e.target.closest("[data-win]")?.dataset.win;
   if (action) windowAction(action);
+});
+
+$("content").addEventListener("click", (e) => {
+  const action = e.target.closest("button[data-power]")?.dataset.power;
+  if (action) runPower(action);
 });
 
 $("sidebar").addEventListener("click", (e) => {

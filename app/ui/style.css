@@ -169,6 +169,16 @@ pre { margin: 0; font: inherit; }
 .finding .mark { flex: 0 0 auto; }
 .finding .what { font-weight: bold; }
 .finding .area, .legend { color: var(--dim); }
+/* Windows 2000 push buttons: raised, pressed in when clicked, greyed out when not available. */
+.actions { display: flex; align-items: center; gap: 8px; margin: 18px 0 6px; }
+.btn {
+  min-width: 90px; padding: 4px 14px; border: none; background: var(--win); color: #000; cursor: pointer;
+  box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 var(--light), inset -2px -2px 0 var(--mid), inset 2px 2px 0 var(--win);
+}
+.btn:active:not(:disabled) { box-shadow: inset 1px 1px 0 #000, inset -1px -1px 0 var(--light), inset 2px 2px 0 var(--mid); padding: 5px 13px 3px 15px; }
+.btn:focus-visible { outline: 1px dotted #000; outline-offset: -5px; }
+.btn:disabled { color: var(--mid); text-shadow: 1px 1px 0 var(--light); cursor: default; }
+.error { color: #a00000; }
 .about { display: flex; align-items: center; gap: 18px; margin-bottom: 12px; }
 
 @media (max-width: 640px) {

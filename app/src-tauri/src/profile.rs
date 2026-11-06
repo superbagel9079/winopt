@@ -211,6 +211,25 @@ pub fn is_asus(inv: &Inventory) -> bool {
     inv.machine.manufacturer.to_ascii_lowercase().contains("asus")
 }
 
+/// Armoury Crate counts when one of its services can start; disabled, it manages nothing.
+pub fn armoury_crate_active(inv: &Inventory) -> bool {
+    inv.tools
+        .asus_services
+        .iter()
+        .any(|(name, mode)| name.starts_with("ArmouryCrate") && mode != "Disabled")
+}
+
+/// The maker's tool that already manages this laptop's power, if one does.
+pub fn vendor_power_tool(inv: &Inventory) -> Option<&'static str> {
+    if inv.tools.ghelper_running {
+        Some("G-Helper")
+    } else if armoury_crate_active(inv) {
+        Some("Armoury Crate")
+    } else {
+        None
+    }
+}
+
 /// What this machine's tuning has to take into account, most important first.
 pub fn findings(inv: &Inventory) -> Vec<Finding> {
     let mut out = Vec::new();
@@ -262,11 +281,7 @@ fn asus_findings(inv: &Inventory, out: &mut Vec<Finding>) {
     if !is_asus(inv) || inv.machine.form != FormFactor::Laptop {
         return;
     }
-    let armoury = inv
-        .tools
-        .asus_services
-        .iter()
-        .any(|(name, mode)| name.starts_with("ArmouryCrate") && mode != "Disabled");
+    let armoury = armoury_crate_active(inv);
     if inv.tools.ghelper_running {
         out.push(finding("ghelper", "ASUS", Level::Note,
             "G-Helper is running",
