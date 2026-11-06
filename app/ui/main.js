@@ -48,11 +48,18 @@ const plain = (name) => (name || "").replace(/\((R|TM)\)/gi, "").replace(/\s+/g,
 
 const join = (...parts) => parts.filter(Boolean).join(" · ");
 
-/** "[████████░░░░]" for a share between 0 and 1. */
-function bar(share, width = 20) {
-  const full = Math.round(Math.max(0, Math.min(1, share)) * width);
-  return `[${"█".repeat(full)}${"░".repeat(width - full)}]`;
+/** A Windows 2000 progress bar: a sunken box of separate blocks, filled up to `share`
+ *  (0 to 1), with its percentage and an optional word after it. */
+function bar(share, label = "") {
+  const clamped = Math.max(0, Math.min(1, share));
+  const filled = Math.round(clamped * BAR_BLOCKS);
+  const blocks = Array.from({ length: BAR_BLOCKS }, (_, i) => el("i", { class: i < filled ? "on" : null }));
+  return el("div", { class: "bar-row" },
+    el("div", { class: "bar", role: "img", "aria-label": `${Math.round(clamped * 100)} %` }, blocks),
+    el("span", { class: "bar-value" }, join(`${Math.round(clamped * 100)} %`, label)));
 }
+
+const BAR_BLOCKS = 30;
 
 const FORM = { laptop: "Laptop", desktop: "Desktop", unknown: "Unknown" };
 const VENDOR = { nvidia: "NVIDIA", amd: "AMD", intel: "Intel", other: "" };
@@ -150,7 +157,7 @@ function memory({ inventory: { memory: mem } }) {
   const out = [
     fact("Installed", installed && memorySize(installed)),
     fact("Usable", mem.totalBytes && memorySize(mem.totalBytes)),
-    installed && mem.totalBytes && el("div", { class: "bar" }, `${bar(mem.totalBytes / installed, 24)} usable`),
+    installed && mem.totalBytes && bar(mem.totalBytes / installed, "usable"),
   ];
   moduleGroups(mem.modules).forEach((g, i) => {
     const speed = g.ratedMhz > g.configuredMhz && g.configuredMhz
@@ -185,13 +192,13 @@ function power({ inventory: { power: p, machine } }) {
     heading("Battery"),
     b ? fact("Source", b.onAc ? "Plugged in" : "On battery") : fact("Battery", machine.form === "laptop" ? "not read" : "none"),
     b && b.chargePercent != null && fact("Charge", `${b.chargePercent} %`),
-    b && b.chargePercent != null && el("div", { class: "bar" }, bar(b.chargePercent / 100, 24)),
+    b && b.chargePercent != null && bar(b.chargePercent / 100),
   ];
 }
 
 function tools({ inventory: inv }) {
   const t = inv.tools;
-  const out = [fact("Chocolatey", t.chocolatey ? "installed" : "not installed")];
+  const out = [heading("Package manager"), fact("Chocolatey", t.chocolatey ? "installed" : "not installed")];
   if (/asus/i.test(inv.machine.manufacturer)) {
     out.push(heading("ASUS"), fact("G-Helper", t.ghelperRunning ? "running" : "not running"));
     if (!t.asusServices.length) out.push(fact("Services", "none"));
@@ -346,8 +353,7 @@ function select(index) {
 function showMachine() {
   const name = machineName(state.report.inventory.machine);
   const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  $("machine-name").textContent = name;
-  $("app-title").textContent = `winopt: ${name}`;
+  $("app-title").textContent = name;
   $("status-right").textContent = `read at ${time}`;
   $("splash").hidden = true;
   $("sidebar").hidden = false;
@@ -474,7 +480,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 function tickClock() {
-  $("clock").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const now = new Date();
+  const date = now.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const time = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  $("clock").textContent = `${date}  ${time}`;
 }
 
 $("splash-logo").replaceWith(logo("logo-splash"));

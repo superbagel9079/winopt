@@ -67,8 +67,7 @@ pre { margin: 0; font: inherit; }
 #menubar button { display: flex; align-items: center; gap: 6px; background: none; border: none; padding: 0 1.1ch; cursor: pointer; font-weight: inherit; }
 #menubar button:hover, #menubar button[aria-expanded="true"] { background: var(--sel-bg); color: var(--sel-fg); }
 #menubar button:disabled { opacity: .45; cursor: default; background: none; color: inherit; }
-#menubar-right { margin-left: auto; padding-left: 2ch; min-width: 0; display: flex; align-items: center; gap: 2ch; font-weight: normal; white-space: nowrap; overflow: hidden; }
-#machine-name { overflow: hidden; text-overflow: ellipsis; }
+#menubar-right { margin-left: auto; padding-left: 2ch; min-width: 0; display: flex; align-items: center; font-weight: normal; white-space: pre; overflow: hidden; }
 
 /* The Theme pull-down: under its title, a frame and a shadow, a check on the one in use. */
 .pulldown { position: relative; display: flex; }
@@ -157,7 +156,15 @@ pre { margin: 0; font: inherit; }
 .fact .k { flex: 0 0 auto; color: var(--dim); }
 .fact .dots { flex: 1 1 2ch; min-width: 2ch; border-bottom: 1px dotted var(--dim); transform: translateY(-.3em); }
 .fact .v { flex: 0 1 auto; min-width: 0; text-align: right; overflow-wrap: anywhere; }
-.bar { white-space: pre; margin-top: 4px; color: var(--accent); }
+/* A Windows 2000 progress bar: a sunken box, blocks of the theme's colour with gaps. */
+.bar-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; }
+.bar {
+  flex: 1; max-width: 420px; height: 18px; padding: 2px; display: flex; gap: 2px; background: #fff;
+  box-shadow: inset 1px 1px 0 var(--mid), inset -1px -1px 0 var(--light), inset 2px 2px 0 var(--deep), inset -2px -2px 0 var(--win);
+}
+.bar i { flex: 1; }
+.bar i.on { background: var(--accent); }
+.bar-value { flex: 0 0 auto; color: var(--dim); }
 .finding { display: flex; gap: 1ch; margin: 0 0 14px; }
 .finding .mark { flex: 0 0 auto; }
 .finding .what { font-weight: bold; }
