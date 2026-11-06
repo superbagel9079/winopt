@@ -22,8 +22,11 @@ function el(tag, attrs, ...children) {
   return node;
 }
 
-const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, reducedMotion ? 0 : ms));
+// The start screen's pace. It does not follow Windows' "animation effects" switch: lines
+// printed one after another are a reading pace, and with no delay nothing could be read.
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const SPLASH = { spin: 120, minReading: 1200, line: 220, hold: 1800 };
+const SPINNER = ["|", "/", "-", "\\"];
 
 // --- formatting ----------------------------------------------------------------------
 
@@ -396,25 +399,30 @@ async function start() {
   const cursor = el("span", { class: "cursor" }, "_");
   const print = (text) => cursor.before(text + "\n");
   log.replaceChildren(cursor);
-  cursor.before("Reading the machine");
+  cursor.before("Reading the machine... ");
+  const spinner = el("span", {}, SPINNER[0]);
+  cursor.before(spinner);
+  // The reading often takes under a second: the spinner turns a little longer, so the
+  // line is seen before its answer.
   const reading = scan();
   let done = false;
-  reading.then(() => { done = true; }, () => { done = true; });
-  while (!done) {
-    await sleep(180);
-    if (!done) cursor.before(".");
+  Promise.allSettled([reading, sleep(SPLASH.minReading)]).then(() => { done = true; });
+  for (let turn = 1; !done; turn++) {
+    await sleep(SPLASH.spin);
+    spinner.textContent = SPINNER[turn % SPINNER.length];
   }
+  spinner.remove();
   try {
     state.report = await reading;
-    print(" OK\n");
+    print("OK\n");
     for (const text of bootLines(state.report)) {
-      await sleep(70);
+      await sleep(SPLASH.line);
       print(text);
     }
-    await sleep(700);
+    await sleep(SPLASH.hold);
     showMachine();
   } catch (e) {
-    print(" failed\n");
+    print("failed\n");
     print(`The machine could not be read: ${e?.message || e}`);
     print("winopt will try again in a minute.");
     $("status-right").textContent = "not read";
