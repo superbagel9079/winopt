@@ -1,41 +1,32 @@
-/* winopt's look, Pier's: black and white, square, the panels set apart by a step of tone,
-   a line under each section and between rows. A console font throughout.
+/* winopt's look: one program window on a desktop of another era, the way an old control
+   panel was laid out: a menu bar, the sections listed on the left, the one chosen on the
+   right, a status bar. One typewriter font throughout, Courier New (it comes
+   with Windows, nothing to ship). Platinum grey throughout, in a Windows 2000 frame; the
+   Theme menu (F2) picks the highlight colour and the desktop.
 
-   Contents: tokens · base · controls · top bar · machine · cards · findings · scrollbars. */
+   Contents: tokens · base · menu bar · the window · splash · sidebar · content ·
+   logo · themes and the frame · scrollbars. */
 
 /* ---------------------------------------------------------------- tokens */
 
 :root {
-  --bg: #0c0c0c;
-  --fg: #f2f2f2;
-  --dim: #8a8a8a;
-  --line: #2c2c2c;
-  color-scheme: dark;
-}
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #fafafa; --fg: #111; --dim: #6a6a6a; --line: #d4d4d4;
-    color-scheme: light;
-  }
-}
-:root[data-theme="light"] {
-  --bg: #fafafa; --fg: #111; --dim: #6a6a6a; --line: #d4d4d4;
+  --mono: "Courier New", Courier, monospace;
+  --desk: #808080;
+  --win: #fff;          /* the window's frame */
+  --pane: #fff;         /* where the text is */
+  --fg: #000;
+  --dim: #555;
+  --frame: #000;
+  --shadow: 2px 2px 0 #000;
+  --sel-bg: #000;
+  --sel-fg: #fff;
+  --bar-bg: #fff;
+  --bar-fg: #000;
+  --bar-line: 1px solid #000;
+  --accent: #555;
+  --font: var(--mono);
+  --title-font: var(--mono);
   color-scheme: light;
-}
-:root {
-  /* Surfaces: the panels (a step above the background), what sits on them, what is
-     under the pointer. */
-  --surface: color-mix(in srgb, var(--fg) 5%, var(--bg));
-  --chip: var(--bg);
-  --raise: color-mix(in srgb, var(--fg) 10%, var(--bg));
-  --strong: color-mix(in srgb, var(--fg) 16%, var(--bg));
-  --ui: "Cascadia Mono", Consolas, ui-monospace, monospace;
-  --t-label: 11px;
-  --t-small: 12px;
-  --t-text: 13px;
-  --t-title: 15px;
-  /* Spacing: 4, 8, 12, 16, 24 and nothing else. */
-  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
 }
 
 /* ---------------------------------------------------------------- base */
@@ -44,107 +35,231 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
-  background: var(--bg);
+  background: var(--desk);
   color: var(--fg);
-  font: var(--t-text)/1.5 var(--ui);
+  font: 14px/1.45 var(--font);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  cursor: default;
 }
-h1 { font-size: var(--t-title); font-weight: 600; margin: 0; }
-h2 {
-  font-size: var(--t-small); font-weight: 600; margin: 0 0 var(--s1);
-  padding: 0 0 6px; border-bottom: 1px solid var(--line);
-}
-p { margin: var(--s2) 0; }
+button { font: inherit; color: inherit; }
+pre { margin: 0; font: inherit; }
 .dim { color: var(--dim); }
-.small { font-size: var(--t-small); }
-.live-dot { animation: pulse 1.2s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: .3; } }
-@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+::selection { background: var(--sel-bg); color: var(--sel-fg); }
 
-/* ---------------------------------------------------------------- controls */
+/* ---------------------------------------------------------------- menu bar */
 
-button {
-  font: inherit;
-  background: var(--fg);
-  color: var(--bg);
-  border: 1px solid transparent;
-  border-radius: 0;
-  padding: 5px var(--s3);
-  cursor: pointer;
+#menubar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  min-height: 28px;
+  padding: 0 8px;
+  background: var(--bar-bg);
+  color: var(--bar-fg);
+  border-bottom: var(--bar-line);
+  font-family: var(--title-font);
+  font-weight: bold;
+  position: relative;
+  z-index: 10;
 }
-button:hover { background: color-mix(in srgb, var(--fg) 85%, var(--bg)); }
-button.link { background: none; border: none; color: var(--dim); padding: 0; }
-button.link:hover, button.link:focus-visible { color: var(--fg); }
-button:disabled { opacity: .5; cursor: default; }
-:focus-visible { outline: 1px solid var(--fg); outline-offset: 2px; }
+#menubar button { display: flex; align-items: center; gap: 6px; background: none; border: none; padding: 0 1.1ch; cursor: pointer; font-weight: inherit; }
+#menubar button:hover, #menubar button[aria-expanded="true"] { background: var(--sel-bg); color: var(--sel-fg); }
+#menubar button:disabled { opacity: .45; cursor: default; background: none; color: inherit; }
+#menubar-right { margin-left: auto; padding-left: 2ch; min-width: 0; display: flex; align-items: center; gap: 2ch; font-weight: normal; white-space: nowrap; overflow: hidden; }
+#machine-name { overflow: hidden; text-overflow: ellipsis; }
 
-/* ---------------------------------------------------------------- top bar */
-
-#topbar { display: flex; align-items: center; gap: var(--s4); padding: 6px 14px; min-height: 36px; background: var(--bg); }
-.logo { font-weight: 700; }
-#status { min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-nav { margin-left: auto; display: flex; gap: var(--s4); flex-shrink: 0; }
-
-/* ---------------------------------------------------------------- page */
-
-#page { flex: 1; overflow: auto; background: var(--surface); }
-#content { max-width: 1040px; margin: 0 auto; padding: var(--s5) 20px 32px; }
-.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 10px; color: var(--dim); }
-.error { color: var(--fg); font-weight: 600; border-left: 3px solid var(--fg); padding-left: var(--s2); }
-
-/* The machine: who made it, its name, what kind it is, then Windows and its firmware. */
-.machine { margin-bottom: var(--s5); }
-.machine .maker { color: var(--dim); font-size: var(--t-small); }
-.machine h1 { font-size: 20px; margin: 2px 0 var(--s2); overflow-wrap: anywhere; }
-.tags { display: flex; gap: 2px; flex-wrap: wrap; margin-bottom: var(--s2); }
-.tag { background: var(--chip); color: var(--dim); padding: 2px 10px; font-size: var(--t-small); }
-.tag.strong { background: var(--fg); color: var(--bg); }
-.machine .os { color: var(--dim); font-size: var(--t-small); }
-
-/* ---------------------------------------------------------------- cards */
-
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: var(--s4); }
-.card { background: var(--chip); padding: 14px var(--s4) var(--s3); min-width: 0; }
-.card.wide { grid-column: 1 / -1; }
-/* One fact per row: what it is on the left, its value on the right, a line between. */
-.facts { list-style: none; margin: 0; padding: 0; }
-.facts li { display: flex; gap: var(--s3); padding: 5px var(--s2); margin: 0 calc(-1 * var(--s2)); border-top: 1px solid var(--line); min-width: 0; }
-.facts li:first-child { border-top: none; }
-.facts li:hover { background: var(--raise); }
-.facts .k { flex: 0 0 9.5em; color: var(--dim); }
-.facts .v { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.facts li.head { padding-top: var(--s3); }
-.facts li.head .v { font-weight: 600; }
-.facts li.head:hover { background: none; }
-
-/* ---------------------------------------------------------------- findings */
-
-.findings { list-style: none; margin: 0; padding: 0; }
-.findings li { display: flex; gap: var(--s3); padding: var(--s2); margin: 0 calc(-1 * var(--s2)); border-top: 1px solid var(--line); }
-.findings li:first-child { border-top: none; }
-.findings li:hover { background: var(--raise); }
-.findings .mark { flex: 0 0 1.2em; text-align: center; color: var(--dim); }
-.findings li.warning .mark, .findings li.advice .mark { color: var(--fg); font-weight: 700; }
-.findings li.warning { box-shadow: inset 2px 0 0 var(--fg); }
-.findings .area { flex: 0 0 7.5em; text-align: center; align-self: flex-start; color: var(--dim); font-size: var(--t-label); background: var(--surface); padding: 0 6px; margin-top: 1px; }
-.findings .body { flex: 1 1 auto; min-width: 0; }
-.findings .title { font-weight: 600; overflow-wrap: anywhere; }
-.findings .detail { color: var(--dim); font-size: var(--t-small); margin-top: 2px; }
-.legend { color: var(--dim); font-size: var(--t-small); margin: var(--s2) 0 0; }
-.warnings { margin-top: var(--s4); }
-.warnings li { color: var(--dim); font-size: var(--t-small); }
-
-@media (max-width: 520px) {
-  .facts li { flex-direction: column; gap: 0; }
-  .facts .k { flex-basis: auto; }
+/* The Theme pull-down: under its title, a frame and a shadow, a check on the one in use. */
+.pulldown { position: relative; display: flex; }
+.dropdown {
+  position: absolute; top: 100%; left: 0; z-index: 11;
+  list-style: none; margin: 0; padding: 2px 0; min-width: 26ch;
+  background: var(--bar-bg); color: var(--bar-fg);
+  border: 1px solid var(--frame); box-shadow: var(--shadow);
+  font-weight: normal;
 }
+.dropdown button { width: 100%; text-align: left; padding: 3px 1.5ch 3px .5ch !important; }
+.dropdown .check { flex: 0 0 2ch; }
+
+/* ---------------------------------------------------------------- the window */
+
+#desktop { flex: 1; min-height: 0; display: flex; padding: 18px; }
+.window {
+  flex: 1;
+  min-width: 0;
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--win);
+  border: 1px solid var(--frame);
+  box-shadow: var(--shadow);
+}
+.titlebar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  border-bottom: 1px solid var(--frame);
+  font-family: var(--title-font);
+  font-weight: bold;
+}
+.title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 0 8px; }
+.title > span { padding: 0 8px; background: var(--win); }
+.app-body { flex: 1; min-height: 0; display: flex; background: var(--pane); }
+.statusbar { flex: 0 0 auto; display: flex; justify-content: space-between; gap: 2ch; padding: 2px 8px; border-top: 1px solid var(--frame); color: var(--dim); }
+
+/* ---------------------------------------------------------------- splash */
+
+#splash { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 20px; overflow: auto; }
+#splash-log { min-height: 10em; min-width: min(46ch, 100%); white-space: pre-wrap; color: var(--dim); }
+/* The cursors blink even with Windows animations off: once a second is a caret, not a flash. */
+.cursor { animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---------------------------------------------------------------- sidebar */
+
+#sidebar {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 8px;
+  overflow-y: auto;
+  border-right: 1px solid var(--frame);
+}
+/* A group's name: small capitals spaced out, a rule under it. */
+.group { font-size: 12px; letter-spacing: .12em; color: var(--dim); }
+#sidebar .group { margin: 14px 0 3px; padding-bottom: 1px; border-bottom: 1px solid color-mix(in srgb, var(--frame) 45%, transparent); }
+#sidebar .group:first-child { margin-top: 0; }
+#sidebar .item {
+  display: flex; align-items: baseline; gap: 10px;
+  background: none; border: none; padding: 2px 8px; text-align: left; cursor: pointer;
+}
+#sidebar .item .count { margin-left: auto; color: var(--dim); }
+#sidebar .item:hover { background: color-mix(in srgb, var(--sel-bg) 35%, transparent); }
+#sidebar .item.selected, #sidebar .item.selected .count { background: var(--sel-bg); color: var(--sel-fg); }
+/* About sits apart, at the bottom. */
+#sidebar .item.last { margin-top: auto; }
+
+/* ---------------------------------------------------------------- content */
+
+#content { flex: 1; min-width: 0; overflow: auto; padding: 18px 26px 24px; user-select: text; cursor: auto; }
+#content-head { margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--frame); }
+#content-head h2 { font: bold 26px/1.1 var(--title-font); margin: 2px 0 4px; }
+#content-body { max-width: 780px; }
+#content-body h3 { font: bold 14px/1.4 var(--title-font); margin: 18px 0 4px; padding-bottom: 2px; border-bottom: 1px solid color-mix(in srgb, var(--frame) 40%, transparent); }
+#content-body h3:first-child { margin-top: 0; }
+#content-body p { margin: 6px 0; }
+/* A fact: its name, dots up to the value, as in a setup page. */
+.fact { display: flex; align-items: baseline; gap: 1ch; padding: 1px 0; }
+.fact .k { flex: 0 0 auto; color: var(--dim); }
+.fact .dots { flex: 1 1 2ch; min-width: 2ch; border-bottom: 1px dotted var(--dim); transform: translateY(-.3em); }
+.fact .v { flex: 0 1 auto; min-width: 0; text-align: right; overflow-wrap: anywhere; }
+.bar { white-space: pre; margin-top: 4px; color: var(--accent); }
+.finding { display: flex; gap: 1ch; margin: 0 0 14px; }
+.finding .mark { flex: 0 0 auto; }
+.finding .what { font-weight: bold; }
+.finding .area, .legend { color: var(--dim); }
+.about { display: flex; align-items: center; gap: 18px; margin-bottom: 12px; }
+
+@media (max-width: 640px) {
+  #desktop { padding: 8px; }
+  #sidebar { flex-basis: 150px; }
+  #sidebar .count { display: none; }
+}
+
+/* ---------------------------------------------------------------- logo */
+
+/* "C:\> winopt" and a block cursor that blinks, at any size. */
+.logo { display: inline-flex; align-items: baseline; white-space: pre; }
+.logo .prompt { color: var(--accent); }
+.block-cursor { display: inline-block; width: .55em; height: .95em; margin-left: .12em; background: currentColor; transform: translateY(.12em); animation: blink 1s steps(1) infinite; }
+.logo-big { font-size: 40px; line-height: 1.1; }
+.logo-splash { font-size: 56px; line-height: 1.1; margin-bottom: 8px; }
+
+/* ================================================================ themes */
+
+/* The Theme menu picks the colours: Platinum grey with one highlight colour and its
+   desktop, as the Appearance panel of Mac OS 8.5 offered them. The frame around the
+   program is Windows 2000's, its title bar a gradient of the highlight colour. */
+
+/* ---------------------------------------------------------------- Platinum, shared */
+
+body {
+  --win: #e2e2e2;
+  --frame: #262626;
+  --dim: #5a5a5a;
+  --shadow: 1px 1px 0 #262626, 3px 3px 0 rgba(0, 0, 0, .25);
+  --sel-fg: #000;
+  --bar-bg: #e2e2e2;
+  --bar-line: 1px solid #262626;
+  --light: #fff;
+  --mid: #9a9a9a;
+  --deep: #404040;
+  --stripes: repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 4px);
+}
+#menubar { box-shadow: inset 0 -2px 0 var(--light); }
+.app-body { border: 1px solid var(--mid); box-shadow: inset 1px 1px 0 var(--frame); }
+#sidebar { background: #fff; border-right: 1px solid var(--mid); box-shadow: inset -1px 0 0 var(--light), 1px 0 0 var(--win), 2px 0 0 var(--mid); margin-right: 3px; }
+.statusbar { border-top: none; padding: 4px 4px 0; }
+#content-head { border-bottom-color: var(--mid); }
+
+/* ---------------------------------------------------------------- Theme: the colours */
+
+body[data-theme="platinum"]   { --sel-bg: #ccccff; --accent: #6666cc; --desk: var(--stripes), #66669a; }
+body[data-theme="graphite"]   { --sel-bg: #c6ccd8; --accent: #56627a; --desk: var(--stripes), #4b5361; }
+body[data-theme="bondi"]      { --sel-bg: #b3e3e8; --accent: #1d8794; --desk: var(--stripes), #2e8d98; }
+body[data-theme="lime"]       { --sel-bg: #d4eaab; --accent: #5a8a22; --desk: var(--stripes), #6a9340; }
+body[data-theme="tangerine"]  { --sel-bg: #f8d2a6; --accent: #c86a12; --desk: var(--stripes), #b0703a; }
+body[data-theme="strawberry"] { --sel-bg: #f6c0cb; --accent: #bf3a57; --desk: var(--stripes), #a05467; }
+body[data-theme="grape"]      { --sel-bg: #ddc6ee; --accent: #7a3fa0; --desk: var(--stripes), #684a80; }
+body[data-theme="gold"]       { --sel-bg: #f0dfa0; --accent: #a07a12; --desk: var(--stripes), #8a7a4e; }
+/* Charcoal: the darker grey of Mac OS 8's Hi-Tech look. */
+body[data-theme="charcoal"]   {
+  --sel-bg: #b3b9c4; --accent: #3a3a3a; --desk: var(--stripes), #2e2e2e;
+  --win: #c4c4c4; --bar-bg: #c4c4c4; --mid: #858585; --light: #e4e4e4;
+}
+
+/* ---------------------------------------------------------------- the frame */
+
+/* The buttons on the right of the title bar act on the program's window. */
+.wb-right { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); display: flex; }
+.titlebar { position: relative; }
+.wb { flex: 0 0 auto; padding: 0; border: none; cursor: pointer; }
+
+/* Windows 2000: a raised grey frame, the title bar a gradient of the theme's colour. */
+.window {
+  padding: 4px;
+  border: none;
+  box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 var(--win), inset -2px -2px 0 var(--mid), inset 2px 2px 0 var(--light), 2px 2px 0 rgba(0, 0, 0, .25);
+}
+.titlebar {
+  height: 22px; margin-bottom: 4px; padding-left: 6px; justify-content: flex-start; border: none;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 35%, #fff));
+  color: #fff;
+}
+.title { padding: 0; }
+.title > span { background: none; padding: 0; }
+.wb-min,
+.wb-max,
+.wb-x {
+  display: grid; place-items: center; width: 18px; height: 16px; margin-left: 2px;
+  background: var(--win); color: #000; font: bold 11px/1 var(--font);
+  box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 var(--light), inset -2px -2px 0 var(--mid);
+}
+.wb-min { margin-left: 0; }
+.wb-x { margin-left: 4px; }
+.wb-min::after { content: "_"; transform: translateY(-3px); }
+.wb-max::after { content: "□"; }
+.wb-x::after { content: "×"; font-size: 14px; }
+.wb:active { box-shadow: inset 1px 1px 0 #000, inset -1px -1px 0 var(--light), inset 2px 2px 0 var(--mid); }
+.statusbar { padding: 4px 2px 0; }
 
 /* ---------------------------------------------------------------- scrollbars */
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
-::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg) 14%, transparent); border: 2px solid transparent; background-clip: padding-box; border-radius: 0; min-height: 24px; }
-::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--fg) 28%, transparent); }
-::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar { width: 15px; height: 15px; }
+::-webkit-scrollbar-track { background: repeating-conic-gradient(var(--frame) 0 25%, var(--pane) 0 50%) 0 0 / 2px 2px; border-left: 1px solid var(--frame); }
+::-webkit-scrollbar-thumb { background: var(--win); border: 1px solid var(--frame); }
+::-webkit-scrollbar-corner { background: var(--win); }

@@ -1,4 +1,6 @@
-// winopt's page: reads the machine through the Rust side (`scan`) and shows it.
+// winopt's page: reads the machine through the Rust side (`scan`) and shows it in one
+// window, the way an old control panel did: the sections on the left, the one chosen on
+// the right. Mouse first, with keys as shortcuts.
 // Outside the app (a plain browser), it shows mock.json, a scan saved from a real machine.
 
 "use strict";
@@ -20,6 +22,9 @@ function el(tag, attrs, ...children) {
   return node;
 }
 
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, reducedMotion ? 0 : ms));
+
 // --- formatting ----------------------------------------------------------------------
 
 const GIB = 1024 ** 3;
@@ -38,68 +43,26 @@ function diskSize(bytes) {
   return `${Math.round(bytes / 1e9)} GB`;
 }
 
+/** Names without the trademark marks, which a narrow line cannot spare. */
+const plain = (name) => (name || "").replace(/\((R|TM)\)/gi, "").replace(/\s+/g, " ").trim();
+
 const join = (...parts) => parts.filter(Boolean).join(" · ");
 
-const FORM = { laptop: "laptop", desktop: "desktop", unknown: "kind unknown" };
+/** "[████████░░░░]" for a share between 0 and 1. */
+function bar(share, width = 20) {
+  const full = Math.round(Math.max(0, Math.min(1, share)) * width);
+  return `[${"█".repeat(full)}${"░".repeat(width - full)}]`;
+}
+
+const FORM = { laptop: "Laptop", desktop: "Desktop", unknown: "Unknown" };
 const VENDOR = { nvidia: "NVIDIA", amd: "AMD", intel: "Intel", other: "" };
-const MARK = { warning: "!", advice: "→", note: "·" };
+const MARK = { warning: "[!]", advice: "[>]", note: "[i]" };
 
-// --- sections ------------------------------------------------------------------------
-
-function fact(key, value) {
-  if (value === undefined || value === null || value === "") return null;
-  return el("li", {}, el("span", { class: "k" }, key), el("span", { class: "v" }, value));
+function machineName(m) {
+  return (m.family && !m.model.includes(m.family) ? `${m.family} ${m.model}` : m.model) || "Unknown model";
 }
 
-/** A row that opens a group of facts (one graphics card, one disk). */
-function head(value) {
-  return el("li", { class: "head" }, el("span", { class: "v" }, value));
-}
-
-function card(title, rows, wide) {
-  return el("section", { class: wide ? "card wide" : "card" }, el("h2", {}, title), el("ul", { class: "facts" }, rows));
-}
-
-function machineBlock(inv) {
-  const m = inv.machine;
-  const name = m.family && !m.model.includes(m.family) ? `${m.family} ${m.model}` : m.model;
-  const discrete = inv.gpus.find((g) => g.discrete);
-  const tags = [
-    el("span", { class: "tag strong" }, FORM[m.form]),
-    m.manufacturer && el("span", { class: "tag" }, /asus/i.test(m.manufacturer) ? "ASUS" : m.manufacturer.split(" ")[0]),
-    discrete && el("span", { class: "tag" }, VENDOR[discrete.vendor] || discrete.name),
-    inv.gpus.some((g) => g.discrete) && inv.gpus.some((g) => !g.discrete) && el("span", { class: "tag" }, "hybrid graphics"),
-    inv.power.battery && el("span", { class: "tag" }, inv.power.battery.onAc ? "on AC" : "on battery"),
-  ];
-  const bios = m.biosVersion && `BIOS ${m.biosVersion}${m.biosDate ? ` (${m.biosDate})` : ""}`;
-  return el("div", { class: "machine" },
-    el("div", { class: "maker" }, m.manufacturer || "Unknown maker"),
-    el("h1", {}, name || "Unknown model"),
-    el("div", { class: "tags" }, tags),
-    el("div", { class: "os" }, join(inv.os.caption, inv.os.build && `build ${inv.os.build}`, m.board && `board ${m.board}`, bios)));
-}
-
-function cpuCard(cpu) {
-  return card("Processor", [
-    fact("Model", cpu.name),
-    fact("Cores", cpu.cores && `${cpu.cores} cores, ${cpu.threads} threads`),
-    fact("Base clock", cpu.baseMhz && `${(cpu.baseMhz / 1000).toFixed(2)} GHz`),
-  ]);
-}
-
-function gpuCard(gpus) {
-  if (!gpus.length) return card("Graphics", [fact("Cards", "none found")]);
-  const rows = gpus.flatMap((g) => [
-    head(g.name),
-    fact("Type", join(g.discrete ? "discrete" : "integrated", VENDOR[g.vendor])),
-    fact("Memory", g.vramBytes && memorySize(g.vramBytes)),
-    fact("Driver", g.driver),
-    fact("Display", g.width && `${g.width}×${g.height}${g.refreshHz ? ` at ${g.refreshHz} Hz` : ""}`),
-  ]);
-  return card("Graphics", rows);
-}
-
-/** Identical modules counted once: "8 × 4 GB". */
+/** Identical memory modules counted once: "8 × 4 GB". */
 function moduleGroups(modules) {
   const groups = new Map();
   for (const m of modules) {
@@ -111,85 +74,288 @@ function moduleGroups(modules) {
   return [...groups.values()];
 }
 
-function memoryCard(memory) {
+const installedMemory = (inv) => inv.memory.modules.reduce((sum, m) => sum + m.capacityBytes, 0) || inv.memory.totalBytes;
+
+// --- window contents -----------------------------------------------------------------
+
+function fact(key, value) {
+  if (value === undefined || value === null || value === "" || value === false) return null;
+  return el("div", { class: "fact" }, el("span", { class: "k" }, key), el("span", { class: "dots" }), el("span", { class: "v" }, value));
+}
+
+const heading = (text) => el("h3", {}, text);
+
+function overview({ inventory: inv, findings }) {
+  const m = inv.machine;
+  const count = (level) => findings.filter((f) => f.level === level).length;
+  const discrete = inv.gpus.find((g) => g.discrete) || inv.gpus[0];
+  return [
+    heading("This machine"),
+    fact("Maker", m.manufacturer),
+    fact("Model", machineName(m)),
+    fact("Type", FORM[m.form]),
+    fact("Board", m.board),
+    fact("BIOS", m.biosVersion && join(m.biosVersion, m.biosDate)),
+    fact("Windows", join(inv.os.caption.replace(/^Microsoft /, ""), inv.os.build && `build ${inv.os.build}`)),
+    heading("At a glance"),
+    fact("Processor", plain(inv.cpu.name)),
+    fact("Graphics", discrete && plain(discrete.name)),
+    fact("Memory", memorySize(installedMemory(inv))),
+    fact("Storage", inv.disks.length && inv.disks.map((d) => diskSize(d.sizeBytes)).join(" + ")),
+    fact("Power plan", inv.power.planName),
+    heading("Findings"),
+    fact("Slowing it down", String(count("warning"))),
+    fact("Worth changing", String(count("advice"))),
+    fact("For information", String(count("note"))),
+  ];
+}
+
+function findingsSection({ findings }) {
+  if (!findings.length) return [el("p", {}, "Nothing to report on this machine.")];
+  return [
+    ...findings.map((f) => el("div", { class: `finding ${f.level}` },
+      el("span", { class: "mark" }, MARK[f.level]),
+      el("div", {},
+        el("div", {}, el("span", { class: "what" }, f.title), el("span", { class: "area" }, `  (${f.area})`)),
+        el("div", { class: "why" }, f.detail)))),
+    el("p", { class: "legend" }, "[!] slows the machine down   [>] worth changing   [i] for information"),
+  ];
+}
+
+function processor({ inventory: { cpu } }) {
+  return [
+    fact("Model", plain(cpu.name)),
+    fact("Maker", cpu.manufacturer),
+    fact("Cores", cpu.cores && String(cpu.cores)),
+    fact("Threads", cpu.threads && String(cpu.threads)),
+    fact("Base clock", cpu.baseMhz && `${(cpu.baseMhz / 1000).toFixed(2)} GHz`),
+  ];
+}
+
+function graphics({ inventory: { gpus } }) {
+  if (!gpus.length) return [el("p", {}, "No graphics card found.")];
+  return gpus.flatMap((g, i) => [
+    heading(`GPU ${i}: ${plain(g.name)}`),
+    fact("Type", join(g.discrete ? "Discrete" : "Integrated", VENDOR[g.vendor])),
+    fact("Video memory", g.vramBytes && memorySize(g.vramBytes)),
+    fact("Driver", g.driver),
+    fact("Display", g.width && `${g.width}x${g.height}${g.refreshHz ? ` @ ${g.refreshHz} Hz` : ""}`),
+  ]);
+}
+
+function memory({ inventory: { memory: mem } }) {
   // Windows' total leaves out what the firmware and the integrated graphics keep: the
   // modules give what is installed.
-  const installed = memory.modules.reduce((sum, m) => sum + m.capacityBytes, 0);
-  const usable = memory.totalBytes && memorySize(memory.totalBytes);
-  const rows = [fact("Total", installed ? join(memorySize(installed), usable && `${usable} usable`) : usable)];
-  for (const g of moduleGroups(memory.modules)) {
-    const speed = g.configuredMhz && g.ratedMhz > g.configuredMhz
+  const installed = mem.modules.reduce((sum, m) => sum + m.capacityBytes, 0);
+  const out = [
+    fact("Installed", installed && memorySize(installed)),
+    fact("Usable", mem.totalBytes && memorySize(mem.totalBytes)),
+    installed && mem.totalBytes && el("div", { class: "bar" }, `${bar(mem.totalBytes / installed, 24)} usable`),
+  ];
+  moduleGroups(mem.modules).forEach((g, i) => {
+    const speed = g.ratedMhz > g.configuredMhz && g.configuredMhz
       ? `${g.configuredMhz} MT/s (rated ${g.ratedMhz})`
       : g.configuredMhz && `${g.configuredMhz} MT/s`;
-    rows.push(
-      fact("Modules", join(`${g.count} × ${memorySize(g.capacityBytes)}`, g.kind, g.soldered && "soldered")),
+    out.push(
+      heading(`Modules ${i + 1}`),
+      fact("Count", `${g.count} x ${memorySize(g.capacityBytes)}`),
+      fact("Type", join(g.kind, g.soldered && "soldered")),
       fact("Speed", speed),
-      fact("Made by", join(g.manufacturer, g.part)));
-  }
-  return card("Memory", rows);
+      fact("Maker", g.manufacturer),
+      fact("Part", g.part));
+  });
+  return out;
 }
 
-function storageCard(disks) {
-  const rows = disks.flatMap((d) => [
-    head(d.name || "Unnamed disk"),
-    fact("Kind", join(d.bus, d.media, diskSize(d.sizeBytes))),
-    d.system && fact("Holds", "Windows"),
-  ]);
-  return card("Storage", rows.length ? rows : [fact("Disks", "none found")]);
-}
-
-function powerCard(power, form) {
-  const b = power.battery;
-  return card("Power", [
-    fact("Plan", power.planName),
-    fact("Source", b ? join(b.onAc ? "plugged in" : "on battery", b.chargePercent != null && `${b.chargePercent} %`) : form === "laptop" ? "battery not read" : "no battery"),
+function storage({ inventory: { disks } }) {
+  if (!disks.length) return [el("p", {}, "No disk found.")];
+  return disks.flatMap((d, i) => [
+    heading(`Disk ${i}: ${d.name || "unnamed"}${d.system ? "  [Windows]" : ""}`),
+    fact("Bus", d.bus),
+    fact("Media", d.media),
+    fact("Size", diskSize(d.sizeBytes)),
   ]);
 }
 
-function toolsCard(tools, isAsus) {
-  const rows = [fact("Chocolatey", tools.chocolatey ? "installed" : "not installed")];
-  if (isAsus) {
-    rows.push(fact("G-Helper", tools.ghelperRunning ? "running" : "not running"));
-    rows.push(fact("ASUS services", tools.asusServices.length
-      ? tools.asusServices.map(([name, mode]) => `${name} (${mode.toLowerCase()})`).join(", ")
-      : "none"));
-  }
-  return card("Tools", rows);
-}
-
-function findingsCard(findings) {
-  const items = findings.map((f) => el("li", { class: f.level },
-    el("span", { class: "mark", title: f.level }, MARK[f.level]),
-    el("span", { class: "area" }, f.area),
-    el("div", { class: "body" }, el("div", { class: "title" }, f.title), el("div", { class: "detail" }, f.detail))));
-  return el("section", { class: "card wide" },
-    el("h2", {}, "What tuning this machine takes into account"),
-    items.length ? el("ul", { class: "findings" }, items) : el("p", { class: "dim" }, "Nothing particular."),
-    el("p", { class: "legend" }, "! holds the machine back  → worth changing  · taken into account. Nothing is changed yet: this is a reading."));
-}
-
-function render({ inventory: inv, findings }) {
-  const isAsus = /asus/i.test(inv.machine.manufacturer);
-  const content = $("content");
-  const parts = [
-    machineBlock(inv),
-    el("div", { class: "cards" },
-      findingsCard(findings),
-      cpuCard(inv.cpu),
-      gpuCard(inv.gpus),
-      memoryCard(inv.memory),
-      storageCard(inv.disks),
-      powerCard(inv.power, inv.machine.form),
-      toolsCard(inv.tools, isAsus)),
-    inv.warnings.length ? el("section", { class: "warnings" },
-      el("h2", {}, "Not read"),
-      el("ul", {}, inv.warnings.map((w) => el("li", {}, w)))) : null,
+function power({ inventory: { power: p, machine } }) {
+  const b = p.battery;
+  return [
+    fact("Plan", p.planName),
+    fact("GUID", p.planGuid),
+    heading("Battery"),
+    b ? fact("Source", b.onAc ? "Plugged in" : "On battery") : fact("Battery", machine.form === "laptop" ? "not read" : "none"),
+    b && b.chargePercent != null && fact("Charge", `${b.chargePercent} %`),
+    b && b.chargePercent != null && el("div", { class: "bar" }, bar(b.chargePercent / 100, 24)),
   ];
-  content.replaceChildren(...parts.filter(Boolean));
-  $("status").textContent = join(inv.machine.family || inv.machine.model, FORM[inv.machine.form]);
 }
 
-// --- scanning ------------------------------------------------------------------------
+function tools({ inventory: inv }) {
+  const t = inv.tools;
+  const out = [fact("Chocolatey", t.chocolatey ? "installed" : "not installed")];
+  if (/asus/i.test(inv.machine.manufacturer)) {
+    out.push(heading("ASUS"), fact("G-Helper", t.ghelperRunning ? "running" : "not running"));
+    if (!t.asusServices.length) out.push(fact("Services", "none"));
+    for (const [name, mode] of t.asusServices) out.push(fact(name, mode.toLowerCase()));
+  }
+  return out;
+}
+
+/** The logo: the name at a command prompt, the cursor blinking after it. */
+function logo(className) {
+  return el("span", { class: `logo ${className}`, "aria-label": "winopt" },
+    el("span", { class: "prompt" }, "C:\\>"), " winopt", el("span", { class: "block-cursor", "aria-hidden": "true" }));
+}
+
+function about() {
+  return [
+    el("div", { class: "about" }, logo("logo-big")),
+    el("p", { class: "dim" }, "Version 0.1.0"),
+    el("p", {}, "winopt reads what this PC is, then suggests the settings that suit it."),
+    el("p", { class: "dim" }, "This version only reads. It does not change anything on the machine."),
+  ];
+}
+
+// --- sections and themes -------------------------------------------------------------
+
+// Grouped as in an old settings panel; `count` puts a number at the right of the row.
+const SECTIONS = [
+  { id: "overview", group: "Machine", label: "This PC", file: "THISPC", render: overview, subtitle: (r) => machineName(r.inventory.machine) },
+  { id: "findings", group: "Machine", label: "Findings", file: "FINDINGS", render: findingsSection,
+    subtitle: (r) => `${r.findings.length} for this machine`, count: (r) => r.findings.length },
+  { id: "processor", group: "Hardware", label: "Processor", file: "CPU", render: processor, subtitle: (r) => plain(r.inventory.cpu.name) },
+  { id: "graphics", group: "Hardware", label: "Graphics", file: "GPU", render: graphics,
+    subtitle: (r) => r.inventory.gpus.map((g) => plain(g.name)).join(" + "), count: (r) => r.inventory.gpus.length },
+  { id: "memory", group: "Hardware", label: "Memory", file: "RAM", render: memory, subtitle: (r) => memorySize(installedMemory(r.inventory)) },
+  { id: "storage", group: "Hardware", label: "Storage", file: "DISKS", render: storage,
+    subtitle: (r) => r.inventory.disks.map((d) => diskSize(d.sizeBytes)).join(" + "), count: (r) => r.inventory.disks.length },
+  { id: "power", group: "System", label: "Power", file: "POWER", render: power, subtitle: (r) => r.inventory.power.planName },
+  { id: "tools", group: "System", label: "Tools", file: "TOOLS", render: tools, subtitle: () => "Installed and running" },
+  { id: "about", group: "", label: "About", file: "ABOUT", render: about, subtitle: () => "Version 0.1.0" },
+];
+
+const THEMES = [
+  { id: "platinum", name: "Platinum" },
+  { id: "graphite", name: "Graphite" },
+  { id: "bondi", name: "Bondi Blue" },
+  { id: "lime", name: "Lime" },
+  { id: "tangerine", name: "Tangerine" },
+  { id: "strawberry", name: "Strawberry" },
+  { id: "grape", name: "Grape" },
+  { id: "gold", name: "Gold" },
+  { id: "charcoal", name: "Charcoal" },
+];
+
+
+/** The menu bar's pull-downs: what each offers, and the body attribute it sets. */
+const MENUS = { theme: THEMES };
+
+const state = { report: null, selected: 0, booting: false, refreshing: false };
+
+/** How often the machine is read again while the window is shown: the source of power,
+ *  the plan, the tools running can change; one reading costs WMI about a second. */
+const REFRESH_MS = 60_000;
+
+/** Preferences kept in the browser; the page works the same when storage is refused. */
+const prefs = {
+  get(key, fallback) { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch { /* not kept, still applied */ } },
+};
+
+function current(menu) {
+  const items = MENUS[menu];
+  const id = prefs.get(menu, items[0].id);
+  return items.find((item) => item.id === id) || items[0];
+}
+
+function applyLook() {
+  for (const menu of Object.keys(MENUS)) {
+    document.body.dataset[menu] = current(menu).id;
+    renderMenu(menu);
+  }
+}
+
+function choose(menu, id) {
+  prefs.set(menu, id);
+  applyLook();
+}
+
+function next(menu) {
+  const items = MENUS[menu];
+  choose(menu, items[(items.indexOf(current(menu)) + 1) % items.length].id);
+}
+
+function renderMenu(menu) {
+  const chosen = current(menu).id;
+  $(`${menu}-menu`).replaceChildren(...MENUS[menu].map((item) => el("li", { role: "none" },
+    el("button", { type: "button", role: "menuitemradio", "aria-checked": String(item.id === chosen), "data-pick": `${menu}:${item.id}` },
+      el("span", { class: "check" }, item.id === chosen ? "✓" : ""), item.name))));
+}
+
+/** Opens one pull-down (closing the others), or closes them all with `null`. */
+function openMenu(menu) {
+  for (const name of Object.keys(MENUS)) {
+    const show = name === menu && $(`${name}-menu`).hidden;
+    $(`${name}-menu`).hidden = !show;
+    document.querySelector(`[data-menu="${name}"]`).setAttribute("aria-expanded", String(show));
+  }
+}
+
+/** The frame's buttons act on the program's own window; in a plain browser they do nothing. */
+function windowAction(action) {
+  const win = window.__TAURI__?.window.getCurrentWindow();
+  if (!win) return;
+  if (action === "minimize") win.minimize();
+  else if (action === "maximize") win.toggleMaximize();
+  else if (action === "close") win.close();
+}
+
+// --- the window ----------------------------------------------------------------------
+
+function renderSidebar() {
+  const rows = [];
+  SECTIONS.forEach((s, i) => {
+    if (s.group && s.group !== SECTIONS[i - 1]?.group) rows.push(el("div", { class: "group" }, s.group.toUpperCase()));
+    rows.push(el("button", {
+      type: "button",
+      class: `item${i === state.selected ? " selected" : ""}${s.id === "about" ? " last" : ""}`,
+      "data-index": String(i),
+      "aria-current": i === state.selected ? "page" : null,
+    }, el("span", {}, s.label), s.count && el("span", { class: "count" }, String(s.count(state.report)))));
+  });
+  $("sidebar").replaceChildren(...rows);
+}
+
+function renderContent() {
+  const section = SECTIONS[state.selected];
+  $("content-head").replaceChildren(
+    section.group && el("div", { class: "group" }, section.group.toUpperCase()),
+    el("h2", {}, section.label),
+    el("div", { class: "dim" }, section.subtitle(state.report) || ""));
+  $("content-body").replaceChildren(...section.render(state.report).filter(Boolean));
+  $("content").scrollTop = 0;
+  $("status-path").textContent = `C:\\WINOPT\\${section.file}.TXT`;
+}
+
+function select(index) {
+  if (!state.report) return;
+  state.selected = (index + SECTIONS.length) % SECTIONS.length;
+  renderSidebar();
+  renderContent();
+}
+
+function showMachine() {
+  const name = machineName(state.report.inventory.machine);
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  $("machine-name").textContent = name;
+  $("app-title").textContent = `winopt: ${name}`;
+  $("status-right").textContent = `read at ${time}`;
+  $("splash").hidden = true;
+  $("sidebar").hidden = false;
+  $("content").hidden = false;
+  select(state.selected);
+}
+
+// --- start ---------------------------------------------------------------------------
 
 function scan() {
   if (window.__TAURI__) return window.__TAURI__.core.invoke("scan");
@@ -199,22 +365,124 @@ function scan() {
   });
 }
 
-async function refresh() {
-  const button = $("btn-rescan");
-  button.disabled = true;
-  $("status").textContent = "reading the machine…";
-  if (!$("content").firstChild) {
-    $("content").append(el("div", { class: "empty" }, el("span", { class: "live-dot" }, "●"), "Reading the machine…"));
+/** The lines a BIOS would print about this machine. */
+function bootLines({ inventory: inv }) {
+  const line = (key, value) => `${key.padEnd(12, ".")} ${value}`;
+  return [
+    line("Machine", machineName(inv.machine)),
+    line("Processor", plain(inv.cpu.name)),
+    ...inv.gpus.map((g) => line("Graphics", plain(g.name))),
+    line("Memory", memorySize(installedMemory(inv))),
+    ...inv.disks.map((d, i) => line(`Disk ${i}`, join(d.name, diskSize(d.sizeBytes)))),
+    ...inv.warnings.map((w) => line("Not read", w)),
+  ];
+}
+
+async function start() {
+  if (state.booting) return;
+  state.booting = true;
+  $("sidebar").hidden = true;
+  $("content").hidden = true;
+  $("splash").hidden = false;
+  $("status-right").textContent = "reading…";
+  $("status-path").textContent = "C:\\WINOPT";
+  const log = $("splash-log");
+  const cursor = el("span", { class: "cursor" }, "_");
+  const print = (text) => cursor.before(text + "\n");
+  log.replaceChildren(cursor);
+  cursor.before("Reading the machine");
+  const reading = scan();
+  let done = false;
+  reading.then(() => { done = true; }, () => { done = true; });
+  while (!done) {
+    await sleep(180);
+    if (!done) cursor.before(".");
   }
   try {
-    render(await scan());
+    state.report = await reading;
+    print(" OK\n");
+    for (const text of bootLines(state.report)) {
+      await sleep(70);
+      print(text);
+    }
+    await sleep(700);
+    showMachine();
   } catch (e) {
-    $("status").textContent = "";
-    $("content").replaceChildren(el("p", { class: "error" }, `The machine could not be read: ${e?.message || e}`));
+    print(" failed\n");
+    print(`The machine could not be read: ${e?.message || e}`);
+    print("winopt will try again in a minute.");
+    $("status-right").textContent = "not read";
   } finally {
-    button.disabled = false;
+    state.booting = false;
   }
 }
 
-$("btn-rescan").addEventListener("click", refresh);
-refresh();
+/** Reads the machine again without the start screen, and updates what is shown in place.
+ *  A failed reading keeps the last one on screen and says so in the status bar. */
+async function refresh() {
+  if (state.booting || state.refreshing || document.hidden) return;
+  if (!state.report) { start(); return; }
+  state.refreshing = true;
+  try {
+    state.report = await scan();
+    const scroll = $("content").scrollTop;
+    showMachine();
+    $("content").scrollTop = scroll;
+  } catch (e) {
+    $("status-right").textContent = `not updated: ${e?.message || e}`;
+  } finally {
+    state.refreshing = false;
+  }
+}
+
+// --- input ---------------------------------------------------------------------------
+
+$("menubar").addEventListener("click", (e) => {
+  const pick = e.target.closest("button[data-pick]")?.dataset.pick;
+  if (pick) {
+    const [menu, id] = pick.split(":");
+    choose(menu, id);
+    openMenu(null);
+    return;
+  }
+  const menu = e.target.closest("button[data-menu]")?.dataset.menu;
+  if (menu) { openMenu(menu); return; }
+  openMenu(null);
+  if (e.target.closest('[data-action="about"]')) select(SECTIONS.findIndex((s) => s.id === "about"));
+});
+
+document.addEventListener("pointerdown", (e) => {
+  if (!e.target.closest(".pulldown")) openMenu(null);
+});
+
+document.querySelector(".titlebar").addEventListener("click", (e) => {
+  const action = e.target.closest("[data-win]")?.dataset.win;
+  if (action) windowAction(action);
+});
+
+$("sidebar").addEventListener("click", (e) => {
+  const item = e.target.closest(".item");
+  if (item) select(Number(item.dataset.index));
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "F2") { e.preventDefault(); next("theme"); return; }
+  if (e.key === "Escape") { openMenu(null); return; }
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.key === "ArrowUp") { e.preventDefault(); select(state.selected - 1); }
+  else if (e.key === "ArrowDown") { e.preventDefault(); select(state.selected + 1); }
+});
+
+function tickClock() {
+  $("clock").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+$("splash-logo").replaceWith(logo("logo-splash"));
+applyLook();
+tickClock();
+setInterval(tickClock, 15000);
+// Read again every minute, and as soon as winopt comes back to the front.
+setInterval(refresh, REFRESH_MS);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+window.addEventListener("focus", refresh);
+start();

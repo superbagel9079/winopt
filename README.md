@@ -1,8 +1,8 @@
 # winopt
 
-**Windows tuning that starts from the machine it runs on.** Other tools apply the same list of tweaks to every PC. winopt first reads what this one is: laptop or desktop, who made it, its processor, graphics, memory, disks, power plan and the vendor tools already there. What it suggests follows from that: a laptop keeps its power per source, an ASUS laptop gets G-Helper rather than a second tool fighting Armoury Crate, an NVIDIA card gets a driver profile chosen for it.
+winopt is a Windows tuning tool that looks at the PC before it suggests anything. It reads whether the machine is a laptop or a desktop, who made it, its processor, graphics, memory, disks and power plan, and which vendor tools are installed. The suggestions depend on what it finds. A laptop keeps separate power settings on battery and on AC, an ASUS laptop gets G-Helper instead of a second tool that fights Armoury Crate, and an NVIDIA card gets a driver profile picked for that card.
 
-For now winopt **reads and explains, it changes nothing**. The tuning itself comes next.
+This version only reads and explains. It does not change anything on the machine yet. It reads the machine again every minute and whenever its window comes back to the front.
 
 ## What it reads
 
@@ -16,7 +16,7 @@ For now winopt **reads and explains, it changes nothing**. The tuning itself com
 | Power | the active plan, battery and source | `powercfg`, `Win32_Battery` |
 | Tools | Chocolatey, G-Helper, ASUS services | the file system, `Win32_Service`, `Win32_Process` |
 
-From these, `profile.rs` draws what tuning this machine has to take into account (laptop power, ASUS tools in conflict, hybrid graphics, memory below its rated speed, Windows on a hard disk…).
+`profile.rs` turns these readings into findings: power on a laptop, ASUS tools in conflict, hybrid graphics, memory below its rated speed, Windows on a hard disk.
 
 ## Build
 
@@ -30,10 +30,10 @@ cargo test            # the rules, without the hardware
 cargo test -- --ignored --nocapture   # read this machine for real, print the report
 ```
 
-The page alone, in a browser, shows `app/ui/mock.json` (a report saved from a real machine): serve `app/ui` with any static server.
+To work on the page in a plain browser, serve `app/ui` with any static server. It then shows `app/ui/mock.json`, a report saved from a real machine.
 
 ## Layout
 
-- `app/src-tauri/src/inventory.rs`: reads the machine. Each part is read on its own; one that fails is listed under "Not read" and the others still show.
+- `app/src-tauri/src/inventory.rs`: reads the machine. Each part is read separately, so a part that fails is listed under "Not read" and the rest still shows.
 - `app/src-tauri/src/profile.rs`: what the readings mean (laptop or desktop, vendors, findings). Pure functions, tested.
 - `app/ui/`: the page, plain HTML, CSS and JavaScript.

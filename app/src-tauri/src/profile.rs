@@ -222,7 +222,7 @@ pub fn findings(inv: &Inventory) -> Vec<Finding> {
     if !inv.tools.chocolatey {
         out.push(finding("choco-missing", "Tools", Level::Note,
             "Chocolatey is not installed",
-            "Tools winopt installs (NVIDIA Profile Inspector, G-Helper…) come through Chocolatey: it will be installed first, when one is needed."));
+            "winopt installs its tools, such as NVIDIA Profile Inspector and G-Helper, through Chocolatey. It will install Chocolatey first, the first time a tool is needed."));
     }
     out.sort_by_key(|f| match f.level {
         Level::Warning => 0,
@@ -237,12 +237,12 @@ fn power_findings(inv: &Inventory, out: &mut Vec<Finding>) {
     match inv.machine.form {
         FormFactor::Laptop => {
             out.push(finding("laptop-power", "Power", Level::Note,
-                "Laptop: power stays per source",
-                "Plugged in, performance can be raised; on battery, the plan and the processor's limits are left to save it. No Ultimate Performance plan forced on a laptop."));
+                "Laptop: power depends on the source",
+                "winopt can raise performance while the laptop is plugged in. On battery it leaves the power plan and the processor limits alone, and it never forces the Ultimate Performance plan on a laptop."));
             if plan == "Ultimate Performance" || plan == "High performance" {
                 out.push(finding("laptop-plan-high", "Power", Level::Advice,
                     format!("{plan} plan on a laptop"),
-                    "It also applies on battery, and keeps the processor from resting: battery life and heat suffer. Balanced, with the vendor's performance mode plugged in, gives the same speed on AC."));
+                    "This plan also applies on battery and keeps the processor from idling, so the battery drains faster and the laptop runs hotter. Balanced, with the maker's performance mode while plugged in, is just as fast on AC."));
             }
         }
         FormFactor::Desktop if plan == "Power saver" => {
@@ -251,7 +251,7 @@ fn power_findings(inv: &Inventory, out: &mut Vec<Finding>) {
                 "Power",
                 Level::Warning,
                 "Power saver plan on a desktop",
-                "The processor is held back for no gain: a desktop has no battery to save.",
+                "This plan slows the processor down to save energy. A desktop has no battery, so it only costs performance.",
             ));
         }
         _ => {}
@@ -270,20 +270,20 @@ fn asus_findings(inv: &Inventory, out: &mut Vec<Finding>) {
     if inv.tools.ghelper_running {
         out.push(finding("ghelper", "ASUS", Level::Note,
             "G-Helper is running",
-            "It sets the performance mode, the GPU mode and the charge limit: winopt leaves those to it and does not change the power plan behind its back."));
+            "G-Helper sets the performance mode, the GPU mode and the battery charge limit. winopt leaves these settings to it and does not touch the power plan."));
         if armoury {
             out.push(finding("ghelper-armoury", "ASUS", Level::Warning,
-                "G-Helper and Armoury Crate both active",
-                "Both drive the same firmware settings and undo each other's. Keep one: G-Helper alone means Armoury Crate's services stopped."));
+                "G-Helper and Armoury Crate are both active",
+                "They change the same firmware settings and overwrite each other. Use only one. To keep G-Helper, stop the Armoury Crate services."));
         }
     } else if armoury {
         out.push(finding("armoury", "ASUS", Level::Advice,
             "Armoury Crate is installed",
-            "G-Helper does the same (performance modes, GPU mode, charge limit, fans) in a few MB, without the background services. Offered as a later step, through Chocolatey."));
+            "G-Helper covers the same settings (performance modes, GPU mode, charge limit, fans) in a few MB and runs no background services. A later version of winopt will offer to install it through Chocolatey."));
     } else {
         out.push(finding("asus-no-tool", "ASUS", Level::Advice,
             "No ASUS control tool found",
-            "Without Armoury Crate or G-Helper, the performance mode and the charge limit stay where the firmware left them. G-Helper sets them in a few MB."));
+            "Without Armoury Crate or G-Helper, the performance mode and the charge limit stay at the firmware defaults. G-Helper can set both and takes a few MB."));
     }
 }
 
@@ -291,13 +291,13 @@ fn gpu_findings(inv: &Inventory, out: &mut Vec<Finding>) {
     if let Some(gpu) = inv.gpus.iter().find(|g| g.vendor == GpuVendor::Nvidia) {
         out.push(finding("nvidia", "Graphics", Level::Note,
             gpu.name.clone(),
-            "A driver profile can be applied with NVIDIA Profile Inspector (shader cache, low latency, power management), chosen for this card."));
+            "NVIDIA Profile Inspector can apply a driver profile made for this card, with settings such as the shader cache size, low latency mode and power management."));
     }
     let hybrid = inv.gpus.iter().any(|g| g.discrete) && inv.gpus.iter().any(|g| !g.discrete);
     if hybrid && inv.machine.form == FormFactor::Laptop {
         out.push(finding("hybrid-gpu", "Graphics", Level::Note,
             "Two graphics chips (hybrid)",
-            "The integrated chip runs the desktop and the card takes over in games. Per-application GPU choice and the MUX switch (if the laptop has one) matter more than global settings."));
+            "The integrated chip drives the desktop and the dedicated card takes over for games. Choosing the GPU per application, and the MUX switch if the laptop has one, matter more here than global settings."));
     }
 }
 
@@ -312,8 +312,8 @@ fn memory_findings(inv: &Inventory, out: &mut Vec<Finding>) {
             "ram-below-rated",
             "Memory",
             Level::Advice,
-            format!("Memory at {} MT/s, rated {}", m.configured_mhz, m.rated_mhz),
-            "XMP or EXPO is probably off. It is turned on in the BIOS (Windows cannot), and is often worth several percent in games.",
+            format!("Memory runs at {} MT/s, rated for {}", m.configured_mhz, m.rated_mhz),
+            "XMP or EXPO is probably turned off. It can only be turned on in the BIOS, not from Windows, and often adds a few percent in games.",
         ));
     }
     let socketed: Vec<_> = modules.iter().filter(|m| !m.soldered).collect();
@@ -323,7 +323,7 @@ fn memory_findings(inv: &Inventory, out: &mut Vec<Finding>) {
             "Memory",
             Level::Advice,
             "A single memory module",
-            "One module is one channel: half the memory bandwidth. A second identical module doubles it.",
+            "With one module the memory runs on a single channel, at half the bandwidth. A second identical module doubles it.",
         ));
     }
 }
@@ -335,7 +335,7 @@ fn storage_findings(inv: &Inventory, out: &mut Vec<Finding>) {
             "Storage",
             Level::Warning,
             "Windows is on a hard disk",
-            "No setting makes up for it: an SSD is the biggest gain this machine can have.",
+            "Moving Windows to an SSD will speed this machine up more than any setting can.",
         ));
     }
 }

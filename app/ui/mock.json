@@ -181,29 +181,29 @@
       "id": "laptop-power",
       "area": "Power",
       "level": "note",
-      "title": "Laptop: power stays per source",
-      "detail": "Plugged in, performance can be raised; on battery, the plan and the processor's limits are left to save it. No Ultimate Performance plan forced on a laptop."
+      "title": "Laptop: power depends on the source",
+      "detail": "winopt can raise performance while the laptop is plugged in. On battery it leaves the power plan and the processor limits alone, and it never forces the Ultimate Performance plan on a laptop."
     },
     {
       "id": "ghelper",
       "area": "ASUS",
       "level": "note",
       "title": "G-Helper is running",
-      "detail": "It sets the performance mode, the GPU mode and the charge limit: winopt leaves those to it and does not change the power plan behind its back."
+      "detail": "G-Helper sets the performance mode, the GPU mode and the battery charge limit. winopt leaves these settings to it and does not touch the power plan."
     },
     {
       "id": "nvidia",
       "area": "Graphics",
       "level": "note",
       "title": "NVIDIA GeForce RTX 4070 Laptop GPU",
-      "detail": "A driver profile can be applied with NVIDIA Profile Inspector (shader cache, low latency, power management), chosen for this card."
+      "detail": "NVIDIA Profile Inspector can apply a driver profile made for this card, with settings such as the shader cache size, low latency mode and power management."
     },
     {
       "id": "hybrid-gpu",
       "area": "Graphics",
       "level": "note",
       "title": "Two graphics chips (hybrid)",
-      "detail": "The integrated chip runs the desktop and the card takes over in games. Per-application GPU choice and the MUX switch (if the laptop has one) matter more than global settings."
+      "detail": "The integrated chip drives the desktop and the dedicated card takes over for games. Choosing the GPU per application, and the MUX switch if the laptop has one, matter more here than global settings."
     }
   ]
 }

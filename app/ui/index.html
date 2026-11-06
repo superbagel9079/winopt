@@ -6,16 +6,42 @@
   <title>winopt</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <header id="topbar">
-    <span class="logo">winopt</span>
-    <span id="status" class="dim"></span>
-    <nav>
-      <button id="btn-rescan" class="link" title="Read the machine again">rescan</button>
-    </nav>
+<body data-theme="platinum">
+  <!-- Everything is a click; the keys in the titles are shortcuts. -->
+  <header id="menubar">
+    <button type="button" class="brand" data-action="about" title="About winopt">winopt</button>
+    <div class="pulldown">
+      <button type="button" data-menu="theme" aria-haspopup="menu" aria-expanded="false" title="The colours (F2)">Theme</button>
+      <ul id="theme-menu" class="dropdown" role="menu" hidden></ul>
+    </div>
+    <span id="menubar-right"><span id="machine-name"></span><span id="clock"></span></span>
   </header>
-  <main id="page">
-    <div id="content"></div>
+
+  <main id="desktop">
+    <section id="app" class="window">
+      <!-- The frame's buttons act on the program's window. -->
+      <header class="titlebar">
+        <span class="title"><span id="app-title">winopt</span></span>
+        <span class="wb-right">
+          <button type="button" class="wb wb-min" data-win="minimize" title="Minimize" aria-label="Minimize"></button>
+          <button type="button" class="wb wb-max" data-win="maximize" title="Maximize" aria-label="Maximize"></button>
+          <button type="button" class="wb wb-x" data-win="close" title="Close" aria-label="Close"></button>
+        </span>
+      </header>
+      <div class="app-body">
+        <!-- While the machine is read: the logo and what is found, line by line. -->
+        <div id="splash" aria-live="polite">
+          <span id="splash-logo"></span>
+          <pre id="splash-log"></pre>
+        </div>
+        <nav id="sidebar" aria-label="Sections" hidden></nav>
+        <div id="content" hidden>
+          <div id="content-head"></div>
+          <div id="content-body"></div>
+        </div>
+      </div>
+      <footer class="statusbar"><span id="status-path">C:\WINOPT</span><span id="status-right"></span></footer>
+    </section>
   </main>
   <script src="main.js"></script>
 </body>
